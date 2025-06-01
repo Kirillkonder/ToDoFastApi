@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Домашняя</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      width: 100%;
+      max-width: 600px;
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      animation: fadeInUp 0.6s ease;
+    }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .task-item {
+      transition: all 0.3s ease;
+    }
+    .task-item:hover {
+      background-color: #f1f1f1;
+    }
+    .completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    .fade-in {
+      animation: fadeIn 0.4s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card p-4">
+    <h2 class="text-center mb-4">Добро пожаловать!</h2>
+    <div class="mb-3">
+      <input type="text" id="searchInput" class="form-control" placeholder="Поиск задач...">
+    </div>
+    <form id="taskForm" class="d-flex mb-3 gap-2 flex-column flex-md-row">
+      <input type="text" id="taskTitle" class="form-control" placeholder="Название задачи" required>
+      <input type="text" id="taskDesc" class="form-control" placeholder="Описание" required>
+      <button type="submit" class="btn btn-success">Добавить</button>
+    </form>
+    <ul id="taskList" class="list-group mb-3"></ul>
+    <nav>
+      <ul class="pagination justify-content-center">
+        <li class="page-item"><button class="page-link" id="prevPage">Назад</button></li>
+        <li class="page-item"><button class="page-link" id="nextPage">Вперёд</button></li>
+      </ul>
+    </nav>
+    <button class="btn btn-danger w-100 mt-2" onclick="logout()">Выйти</button>
+  </div>
+
+  <script>
+    let token = localStorage.getItem("token");
+    let page = 1;
+
+    if (!token) {
+      window.location.href = "/static/login.html";
+    }
+
+    async function fetchTasks() {
+      const res = await fetch(`/task/all?page=${page}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const tasks = await res.json();
+      renderTasks(tasks);
+    }
+
+    function renderTasks(tasks) {
+      const list = document.getElementById("taskList");
+      list.innerHTML = "";
+      tasks.forEach((task) => {
+        const li = document.createElement("li");
+        li.className = `list-group-item d-flex justify-content-between align-items-center task-item fade-in ${task.completed ? 'completed' : ''}`;
+        li.innerHTML = `
+          <span>
+            <strong>${task.title}</strong><br>
+            ${task.description}
+          </span>
+          <div>
+            <button class="btn btn-sm ${task.completed ? 'btn-outline-warning' : 'btn-outline-success'} me-2" onclick="toggleComplete(${task.id}, ${task.completed})">
+              ${task.completed ? '↺' : '✔'}
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">✖</button>
+          </div>`;
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("taskForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("taskTitle").value;
+      const description = document.getElementById("taskDesc").value;
+      await fetch("/task/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title, description }),
+      });
+      e.target.reset();
+      fetchTasks();
+    });
+
+    async function toggleComplete(id, completed) {
+      await fetch(`/task/${id}/complete`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ completed: !completed }),
+      });
+      fetchTasks();
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/task/${id}/delete`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchTasks();
+    }
+
+    document.getElementById("searchInput").addEventListener("input", async (e) => {
+      const query = e.target.value;
+      const res = await fetch(`/task/search?title=${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const tasks = await res.json();
+      renderTasks(tasks);
+    });
+
+    document.getElementById("nextPage").onclick = () => {
+      page++;
+      fetchTasks();
+    };
+
+    document.getElementById("prevPage").onclick = () => {
+      if (page > 1) page--;
+      fetchTasks();
+    };
+
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "/static/login.html";
+    }
+
+    fetchTasks();
+  </script>
+</body>
+</html>

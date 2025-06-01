@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.env
+
+# Alembic
+alembic/versions/
+
+# VSCode
+.vscode/
+
+# Docker volumes / db / logs
+*.db
+*.log
+*.pid
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Node/NPM
+node_modules/
+
+# Build artifacts
+dist/
+build/
